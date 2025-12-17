@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Souza Farma</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
+    <style>
+        /* ESTILOS ORIGINAIS PRESERVADOS */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        :root { --primary: #2c3e50; --secondary: #3498db; --success: #27ae60; --warning: #f39c12; --danger: #e74c3c; --whatsapp: #25D366; --souza-red: #e74c3c; --light: #f8f9fa; --dark: #343a40; --gray: #6c757d; --dashboard-bg: #f8fafc; }
+        body { background-color: var(--dashboard-bg); color: #333; line-height: 1.5; font-size: 14px; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 12px; }
+        .header { background: linear-gradient(135deg, var(--souza-red), #c0392b); color: white; padding: 8px 0; text-align: center; border-radius: 0 0 8px 8px; margin-bottom: 18px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); }
+        .logo-container { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 8px; }
+        .header-logo { max-height: 90px; width: auto; display: block; }
+        .header h1 { font-size: 1.8rem; margin-bottom: 4px; font-weight: 700; color: white; }
+        .slogan { font-size: 0.85rem; opacity: 0.9; margin-bottom: 6px; font-style: italic; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        .contact-info { font-size: 0.8rem; opacity: 0.8; margin-top: 4px; line-height: 1.3; }
+        .dashboard-container { display: none; margin-bottom: 25px; }
+        .dashboard-container.active { display: block; animation: fadeIn 0.5s; }
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+        @media (max-width: 768px) { .stats-grid { grid-template-columns: 1fr; } .header-logo { max-height: 70px; } }
+        .stat-card { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); border-left: 4px solid var(--souza-red); transition: transform 0.3s ease; }
+        .stat-value { font-size: 2rem; font-weight: 700; color: #2c3e50; }
+        .chart-container { background: white; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); border: 1px solid #eee; position: relative; }
+        .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .chart-title { font-size: 18px; font-weight: 600; color: #2c3e50; }
+        .chart-selector { display: flex; gap: 8px; }
+        .chart-btn { padding: 8px 15px; border-radius: 6px; border: none; background-color: #f0f2f5; color: #555; font-weight: 500; cursor: pointer; transition: all 0.3s ease; font-size: 14px; }
+        .chart-btn.active { background-color: var(--souza-red); color: white; }
+        .chart-wrapper { height: 300px; position: relative; }
+        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-bottom: 22px; }
+        .card { background: white; border-radius: 8px; padding: 18px; text-align: center; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05); cursor: pointer; }
+        .card i { font-size: 2.2rem; margin-bottom: 10px; color: var(--souza-red); }
+        .btn { background-color: #3498db; color: white; border: none; padding: 9px 16px; border-radius: 5px; cursor: pointer; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+        .section { background: white; border-radius: 8px; padding: 22px; margin-bottom: 22px; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05); display: none; }
+        .section.active { display: block; animation: fadeIn 0.3s; }
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50; }
+        .form-group input, .form-group select { width: 100%; padding: 9px 11px; border: 1px solid #ddd; border-radius: 5px; }
+        .form-row { display: flex; gap: 11px; margin-bottom: 14px; }
+        .item-card { background: #f8f9fa; border-radius: 6px; padding: 14px; margin-bottom: 9px; border-left: 3px solid #3498db; }
+        .order-item { background: #f8f9fa; border-radius: 5px; padding: 11px; margin-bottom: 9px; border-left: 2px solid var(--souza-red); }
+        .badge { background-color: #3498db; color: white; padding: 3px 7px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-content { background-color: white; padding: 22px; border-radius: 8px; width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <div class="logo-container">
+                <img src="Souza-Farma-logomarca.png" alt="Souza Farma" class="header-logo">
+                <div id="qr-code-header"></div>
+            </div>
+            <h1 id="pharmacy-name">Souza Farma - Farmácia do Trabalhador</h1>
+            <p class="slogan">Cuidando da sua saúde, economia e preço baixo 💊💉</p>
+            <p class="contact-info">Av José Sarney n°06 quadra 03 - Bom Jesus - São Luís MA<br>Tel: 98-98628-7296</p>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="dashboard-container active" id="dashboard-container">
+            <div class="stats-grid">
+                <div class="stat-card"><h4>Clientes Ativos</h4><div class="stat-value" id="active-clients">0</div></div>
+                <div class="stat-card"><h4>Encomendas Hoje</h4><div class="stat-value" id="orders-today">0</div></div>
+                <div class="stat-card"><h4>Receita Total</h4><div class="stat-value" id="total-revenue">R$ 0,00</div></div>
+                <div class="stat-card"><h4>Ticket Médio</h4><div class="stat-value" id="avg-ticket">R$ 0,00</div></div>
+            </div>
+            <div class="chart-container">
+                <div class="chart-header">
+                    <div class="chart-title" id="chartTitle">Vendas por Dia (Últimos 30 dias)</div>
+                    <div class="chart-selector">
+                        <button class="chart-btn active" data-chart="sales" onclick="changeChart('sales')">Vendas</button>
+                        <button class="chart-btn" data-chart="clients" onclick="changeChart('clients')">Clientes</button>
+                        <button class="chart-btn" data-chart="revenue" onclick="changeChart('revenue')">Receita</button>
+                    </div>
+                </div>
+                <div class="chart-wrapper"><canvas id="salesChart"></canvas></div>
+            </div>
+        </div>
+
+        <div class="dashboard" id="simple-dashboard">
+            <div class="card" onclick="showSection('clients')"><i class="fas fa-users"></i><h3>Clientes</h3></div>
+            <div class="card" onclick="showSection('new-client')"><i class="fas fa-user-plus"></i><h3>Novo Cliente</h3></div>
+            <div class="card" onclick="showSection('new-order')"><i class="fas fa-clipboard-list"></i><h3>Nova Encomenda</h3></div>
+            <div class="card" onclick="showSection('orders')"><i class="fas fa-box-open"></i><h3>Encomendas</h3></div>
+        </div>
+
+        <div class="section" id="clients-section">
+            <div class="section-header"><h2>Lista de Clientes</h2><button class="btn btn-secondary btn-sm" onclick="showDashboard()">Voltar</button></div>
+            <input type="text" id="search-clients" placeholder="Buscar cliente..." oninput="renderClientsList()" style="width:100%; padding:10px; margin-bottom:15px;">
+            <div id="clients-list"></div>
+        </div>
+
+        <div class="section" id="new-client-section">
+            <div class="section-header"><h2>Novo Cliente</h2><button class="btn btn-secondary btn-sm" onclick="showDashboard()">Voltar</button></div>
+            <form id="client-form">
+                <div class="form-row">
+                    <div class="form-group" style="flex:1"><label>Nome</label><input type="text" id="client-name" required></div>
+                    <div class="form-group" style="flex:1"><label>Telefone</label><input type="tel" id="client-phone" required></div>
+                </div>
+                <div class="form-group"><label>Endereço (Opcional)</label><input type="text" id="client-address" placeholder="Rua, Número, Bairro"></div>
+                <button type="button" class="btn btn-success" onclick="saveClient()">Salvar Cliente</button>
+            </form>
+        </div>
+
+        <div class="section" id="new-order-section">
+            <div class="section-header"><h2>Nova Encomenda</h2><button class="btn btn-secondary btn-sm" onclick="showDashboard()">Voltar</button></div>
+            <input type="text" id="search-client-order" placeholder="Buscar cliente..." oninput="searchClientForOrder()" style="width:100%; padding:10px;">
+            <div id="client-search-results"></div>
+            <div id="selected-client-info" style="display:none; margin-top:15px;"></div>
+            <div id="order-items" style="display:none; margin-top:20px;">
+                <div style="background:#f8f9fa; padding:15px; border-radius:8px; margin-bottom:15px; border: 1px dashed #ddd;">
+                    <div class="form-row">
+                        <input type="text" id="new-item-desc" placeholder="Produto" style="flex:2">
+                        <input type="number" id="new-item-qty" value="1" style="flex:0.5">
+                        <input type="number" id="new-item-price" placeholder="Preço" style="flex:1">
+                        <button class="btn btn-success btn-sm" onclick="addOrderItemFromForm()">Add</button>
+                    </div>
+                </div>
+                <div id="order-items-list"></div>
+                <div class="order-total" style="padding:15px; background:#e8f6f3; border-radius:8px; margin-top:15px;">Total: R$ <span id="order-total">0.00</span></div>
+                <button class="btn btn-success" onclick="saveOrder()" style="width:100%; margin-top:15px; height:45px;">Finalizar Encomenda</button>
+            </div>
+        </div>
+
+        <div class="section" id="orders-section">
+            <div class="section-header"><h2>Todas as Encomendas</h2><button class="btn btn-secondary btn-sm" onclick="showDashboard()">Voltar</button></div>
+            <div id="orders-list"></div>
+        </div>
+    </div>
+
+    <div class="modal" id="order-modal"><div class="modal-content"><div id="order-details"></div><button class="btn btn-secondary" onclick="closeModal()">Fechar</button></div></div>
+    <div class="modal" id="edit-client-modal"><div class="modal-content"><h3>Editar Cliente</h3><form id="edit-client-form"><input type="hidden" id="edit-client-id"><input type="text" id="edit-client-name" style="width:100%; margin:10px 0;"><input type="tel" id="edit-client-phone" style="width:100%; margin-bottom:10px;"><button type="button" class="btn btn-success" onclick="saveEditedClient()">Salvar Alterações</button></form></div></div>
+
+    <script>
+        // CONFIGURAÇÃO FIREBASE
+        const firebaseConfig = {
+            apiKey: "AIzaSyCt6E9r8ITIqxChpfKcBc1qC_RL1PCnTPM",
+            authDomain: "souza-farma.firebaseapp.com",
+            databaseURL: "https://souza-farma-default-rtdb.firebaseio.com",
+            projectId: "souza-farma",
+            storageBucket: "souza-farma.firebasestorage.app",
+            messagingSenderId: "938609988830",
+            appId: "1:938609988830:web:16d320ae6a9f3990af9e4f"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let clients = [];
+        let selectedClientForOrder = null;
+        let orderTotal = 0;
+        let salesChart = null;
+        let currentChartType = 'sales';
+
+        // CARREGAMENTO SINCRONIZADO (EVITA DUPLICAÇÃO)
+        db.ref('clients').on('value', (snapshot) => {
+            const data = snapshot.val();
+            clients = [];
+            if (data) {
+                Object.keys(data).forEach(key => {
+                    let client = data[key];
+                    if (client.orders) {
+                        client.orders = Object.keys(client.orders).map(k => {
+                            let order = client.orders[k];
+                            order.firebaseKey = k;
+                            return order;
+                        });
+                    } else { client.orders = []; }
+                    clients.push(client);
+                });
+            }
+            updateStats();
+            if(document.getElementById('clients-section').classList.contains('active')) renderClientsList();
+            if(document.getElementById('orders-section').classList.contains('active')) renderOrdersList();
+            updateChart();
+        });
+
+        // SALVAR CLIENTE SEM DUPLICAR
+        function saveClient() {
+            const name = document.getElementById('client-name').value.trim();
+            const phone = document.getElementById('client-phone').value.trim();
+            const address = document.getElementById('client-address').value.trim();
+            if(!name || !phone) return alert("Preencha Nome e Telefone");
+            
+            const id = Date.now();
+            db.ref('clients/' + id).set({ id, name, phone, address, createdAt: new Date().toISOString() })
+            .then(() => {
+                alert("Cliente cadastrado!");
+                document.getElementById('client-form').reset();
+                showDashboard();
+            });
+        }
+
+        // SALVAR ENCOMENDA COM VÍNCULO AO CLIENTE
+        function saveOrder() {
+            const itemDivs = document.querySelectorAll('.order-item-row');
+            if(itemDivs.length === 0) return alert("Adicione itens!");
+            const items = Array.from(itemDivs).map(div => ({ description: div.dataset.desc, quantity: div.dataset.qty, price: div.dataset.price, total: div.dataset.total }));
+            const orderId = Date.now();
+            const order = { id: orderId, clientName: selectedClientForOrder.name, clientId: selectedClientForOrder.id, items, total: orderTotal, status: 'pendente', createdAt: new Date().toISOString() };
+            db.ref('clients/' + selectedClientForOrder.id + '/orders/' + orderId).set(order)
+            .then(() => {
+                alert("Encomenda sincronizada!");
+                resetOrderForm();
+                showSection('orders');
+            });
+        }
+
+        // ALTERAR TIPO DE GRÁFICO (RESTAURADO)
+        function changeChart(type) {
+            currentChartType = type;
+            document.querySelectorAll('.chart-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`[data-chart="${type}"]`).classList.add('active');
+            const title = { 'sales': 'Vendas por Dia', 'clients': 'Novos Clientes', 'revenue': 'Receita por Tipo' };
+            document.getElementById('chartTitle').innerText = title[type];
+            updateChart();
+        }
+
+        function updateChart() {
+            const ctx = document.getElementById('salesChart').getContext('2d');
+            if(salesChart) salesChart.destroy();
+            
+            let labels = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex'];
+            let data = currentChartType === 'sales' ? [12, 19, 3, 5, 2] : [2, 5, 1, 3, 4];
+            
+            salesChart = new Chart(ctx, { 
+                type: currentChartType === 'revenue' ? 'doughnut' : 'line', 
+                data: { labels: labels, datasets: [{ label: currentChartType, data: data, borderColor: '#e74c3c', fill: false }] },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        // LÓGICA DE INTERFACE
+        function showDashboard() {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById('dashboard-container').classList.add('active');
+            document.getElementById('simple-dashboard').style.display = 'grid';
+        }
+
+        function showSection(id) {
+            document.getElementById('dashboard-container').classList.remove('active');
+            document.getElementById('simple-dashboard').style.display = 'none';
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById(id + '-section').classList.add('active');
+        }
+
+        function renderClientsList() {
+            const term = document.getElementById('search-clients').value.toLowerCase();
+            const container = document.getElementById('clients-list');
+            container.innerHTML = clients.filter(c => c.name.toLowerCase().includes(term) || c.phone.includes(term)).map(c => `
+                <div class="item-card">
+                    <strong>${c.name}</strong> - ${c.phone}<br>
+                    <small>${c.address || ''}</small><br>
+                    <button class="btn btn-sm btn-warning" onclick="openEditClient(${c.id})" style="margin-top:7px">Editar</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteClient(${c.id})" style="margin-top:7px">Excluir</button>
+                </div>
+            `).join('');
+        }
+
+        function renderOrdersList() {
+            const container = document.getElementById('orders-list');
+            let html = '';
+            clients.forEach(c => { if(c.orders) c.orders.forEach(o => {
+                html += `<div class="item-card ${o.status}">
+                    <strong>${o.clientName}</strong> - R$ ${parseFloat(o.total).toFixed(2)} 
+                    <span class="badge ${o.status === 'pendente' ? 'badge-warning' : 'badge-success'}">${o.status}</span><br>
+                    <button class="btn btn-sm btn-success" onclick="markDelivered('${c.id}', '${o.firebaseKey}')" style="margin-top:7px">Entregue</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteOrder('${c.id}', '${o.firebaseKey}')" style="margin-top:7px">Excluir</button>
+                </div>`;
+            })});
+            container.innerHTML = html || '<p>Sem encomendas.</p>';
+        }
+
+        // EDIÇÃO E GESTÃO
+        function openEditClient(id) {
+            const c = clients.find(cl => cl.id === id);
+            document.getElementById('edit-client-id').value = c.id;
+            document.getElementById('edit-client-name').value = c.name;
+            document.getElementById('edit-client-phone').value = c.phone;
+            document.getElementById('edit-client-modal').style.display = 'flex';
+        }
+
+        function saveEditedClient() {
+            const id = document.getElementById('edit-client-id').value;
+            db.ref('clients/' + id).update({
+                name: document.getElementById('edit-client-name').value,
+                phone: document.getElementById('edit-client-phone').value
+            }).then(() => { document.getElementById('edit-client-modal').style.display = 'none'; alert("Dados atualizados!"); });
+        }
+
+        function markDelivered(cId, oKey) { db.ref('clients/' + cId + '/orders/' + oKey).update({ status: 'entregue' }); }
+        function deleteOrder(cId, oKey) { if(confirm("Apagar encomenda?")) db.ref('clients/' + cId + '/orders/' + oKey).remove(); }
+        function deleteClient(id) { if(confirm("Apagar cliente?")) db.ref('clients/' + id).remove(); }
+
+        function addOrderItemFromForm() {
+            const desc = document.getElementById('new-item-desc').value;
+            const qty = document.getElementById('new-item-qty').value;
+            const price = document.getElementById('new-item-price').value;
+            if(!desc || !price) return;
+            const total = qty * price;
+            const list = document.getElementById('order-items-list');
+            list.innerHTML += `<div class="order-item order-item-row" data-desc="${desc}" data-qty="${qty}" data-price="${price}" data-total="${total}">${qty}x ${desc} - R$ ${total.toFixed(2)}</div>`;
+            orderTotal += total;
+            document.getElementById('order-total').innerText = orderTotal.toFixed(2);
+        }
+
+        function searchClientForOrder() {
+            const term = document.getElementById('search-client-order').value.toLowerCase();
+            const res = document.getElementById('client-search-results');
+            if(term.length < 2) return res.innerHTML = '';
+            res.innerHTML = clients.filter(c => c.name.toLowerCase().includes(term)).map(c => `<div onclick="selectClientForOrder(${c.id})" style="padding:10px; border-bottom:1px solid #eee; cursor:pointer; background:#fff;">${c.name}</div>`).join('');
+        }
+
+        function selectClientForOrder(id) {
+            selectedClientForOrder = clients.find(c => c.id === id);
+            document.getElementById('selected-client-info').innerHTML = `<div class="item-card">Cliente: <strong>${selectedClientForOrder.name}</strong></div>`;
+            document.getElementById('selected-client-info').style.display = 'block';
+            document.getElementById('order-items').style.display = 'block';
+            document.getElementById('client-search-results').innerHTML = '';
+        }
+
+        function resetOrderForm() {
+            document.getElementById('order-items-list').innerHTML = '';
+            document.getElementById('order-total').innerText = '0.00';
+            document.getElementById('order-items').style.display = 'none';
+            document.getElementById('selected-client-info').style.display = 'none';
+            orderTotal = 0;
+        }
+
+        function updateStats() {
+            let totalRev = 0; let pending = 0;
+            clients.forEach(c => { if(c.orders) c.orders.forEach(o => { totalRev += parseFloat(o.total); if(o.status === 'pendente') pending++; })});
+            document.getElementById('total-revenue').innerText = "R$ " + totalRev.toFixed(2);
+            document.getElementById('active-clients').innerText = clients.length;
+            document.getElementById('orders-today').innerText = pending;
+            document.getElementById('avg-ticket').innerText = "R$ " + (clients.length > 0 ? (totalRev/clients.length).toFixed(2) : "0.00");
+        }
+
+        function closeModal() { document.getElementById('order-modal').style.display = 'none'; document.getElementById('edit-client-modal').style.display = 'none'; }
+        setTimeout(() => { QRCode.toCanvas(document.getElementById('qr-code-header'), "https://wa.me/5598986287296", { width: 45 }); }, 1000);
+    </script>
+</body>
+</html>
